@@ -12,16 +12,18 @@ submissions/<github-login>/<proposal-slug>/
 
 - `<github-login>` 必须与 Pull Request 作者一致。
 - `<proposal-slug>` 使用小写字母、数字和连字符。
-- 每个方案目录只能有一个 `proposal.md`。
+- 每个方案目录只能有一个主稿 `proposal.md`。
 - 每个方案目录可以有一个 `changelog.md`，用于记录版本变化、采纳反馈和待复核事项。
-- 方案文件可使用中文或英文；英文投稿必须在同一 `proposal.md` 的 `# 中文正式译文` 下附完整中文版本，并设置规定的双语元数据。
-- 可选图片或图表放在 `assets/` 或 `visual/assets/` 下，并在 `sources.json` 或版权声明中说明来源。
+- 新方案在主稿中设置 `proposal_format_version: "2"` 和 `bilingual_contract_version: "1"`，并提供独立的中英文稿。中文主稿配套 `proposal.en.md`，英文主稿配套 `proposal.zh.md`；主稿设置 `translation_file`，译稿设置 `translation_of: "proposal.md"`。
+- HTML、A3/A0 PDF 和含文字图件也要提供另一语言的对应文件，并在 `manifest.json` 中登记语言与 `translation_of` 映射。
+- 五张规定图件放在 `assets/figures/` 下，其他可选图片或图表放在 `assets/` 或 `visual/assets/` 下，并在 `sources.json` 或版权声明中说明来源。
 
 ## 必交 formal 成果
 
 ```text
 submissions/<github-login>/<proposal-slug>/
   proposal.md
+  proposal.en.md            # 中文主稿时；英文主稿改为 proposal.zh.md
   changelog.md              # optional iteration log
   manifest.json
   agent.json
@@ -44,19 +46,31 @@ submissions/<github-login>/<proposal-slug>/
     phasing.geojson
   report/
     copyright_statement.md
+    proposal.html
+    proposal.en.html         # 中文主稿时；英文主稿改为 proposal.zh.html
     narrative.md            # optional derived summary; proposal.md remains authoritative
   drawings/
     a3-booklet.pdf
+    a3-booklet.en.pdf        # 中文主稿时；英文主稿改为 a3-booklet.zh.pdf
     a0-boards.pdf
+    a0-boards.en.pdf         # 中文主稿时；英文主稿改为 a0-boards.zh.pdf
+  assets/figures/
+    site-overview.png
+    land-use-structure.png
+    key-areas.png
+    mobility-bluegreen.png
+    metrics-evidence.png
+    *.en.png                 # 中文主稿的含文字图件；英文主稿使用 *.zh.png
   visual/
     index.html
+    index.en.html            # 中文主稿时；英文主稿改为 index.zh.html
 ```
 
 `proposal.md` 是唯一主体方案文本，必须解释设计判断如何引用 `sources.json`、`standard_matrix.json`、`design_depth_matrix.json`、`geometry/*.geojson` 和 `metrics.json`。正文使用 `[source:...]`、`[standard:...]`、`[depth:...]`、`[data:geometry/file.geojson#feature]`、`[metric:...]` 引用证据。
 
 `visual/index.html` 是必交电子展示成果，必须离线可打开，不得依赖 CDN、远程地图瓦片、外部脚本、外部字体、API 请求、iframe 或表单提交。HTML 只负责看懂方案；权威数据仍是 `geometry/*.geojson`、`metrics.json`、`sources.json`、`standard_matrix.json`、`design_depth_matrix.json` 和 `compliance_matrix.json`。
 
-每个必交成果的准备方式见 `docs/formal-submission-guide.md`。该指南详细说明：
+每个必交成果的准备方式见 [Formal AI 方案提交作业指导](../docs/formal-submission-guide.md)。该指南详细说明：
 
 - 什么资料可以作为 official boundary。
 - `site_boundary.geojson` 和 `key_areas.geojson` 的字段要求。
@@ -91,10 +105,26 @@ python3 scripts/scaffold_ai_submission.py \
   --agent-id <github-login> \
   --agent-name "<agent name>" \
   --proposal-title "<proposal title>"
-python3 scripts/self_check_submission.py submissions/<github-login>/<proposal-slug> --pr-author <github-login>
 ```
 
-提交前必须修复到 `self_check_submission.py` 返回 PASS。它会运行 required CI 同款确定性校验、可信空间复核、HTML 可视化复核和专业证据链复核。
+脚手架生成后，先替换正文、双语展示成果、五张图、设计图层和占位 PDF，并移除 `SCAFFOLD-DRAFT`。确认内容已经定稿，再按以下顺序收尾：
+
+```bash
+python3 scripts/render_proposal_html.py submissions/<github-login>/<proposal-slug>
+python3 scripts/finalize_submission.py submissions/<github-login>/<proposal-slug>
+python3 scripts/self_check_submission.py \
+  submissions/<github-login>/<proposal-slug> \
+  --pr-author <github-login> \
+  --mark-self-checked --json
+python3 scripts/participant_preflight.py \
+  submissions/<github-login>/<proposal-slug> \
+  --pr-author <github-login> \
+  --check-push
+```
+
+`finalize_submission.py` 只接受 `package_state=scaffold`。它会检查模板内容和占位成果是否已经替换，然后写入 `package_state=ready_for_review` 和 `readiness_contract=persisted-self-check-v1`，此时 `self_checked` 仍为 `false`。已经 finalize 的方案不要手工改回 scaffold；当前修订流程的工具限制记录在 [#953](https://github.com/open-city-ai/haidian/issues/953)。
+
+带 `--mark-self-checked --json` 的 self-check 会运行 required CI 同款确定性校验、可信空间复核、HTML 可视化复核和专业证据链复核。四门检查全部 PASS 后，它才会更新 `self_check.json`、刷新对应 manifest 哈希，并把 `validation_claim.self_checked` 写为 `true`。最后运行 preflight，确认目录归属、PR 变更范围、文件大小、远程配置和推送权限都没有 blocker。
 
 维护者审核只在 Pull Request comment 中反馈。合并后展示页只显示方案状态和入口链接，不展示 `maintainer_review.py` 生成的 review packet、评分表或中间审核材料；`submissions-data.js` 由维护者合并后生成，参赛者不要修改。
 
