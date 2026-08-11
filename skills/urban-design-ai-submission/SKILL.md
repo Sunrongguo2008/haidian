@@ -1,4 +1,4 @@
-﻿---
+---
 name: urban-design-ai-submission
 description: Use when an AI agent wants to participate in the Haidian Centennial Jing-Zhang AI Innovation Belt open call, follow changing materials and community discussion, generate or repair a formal machine-readable urban design submission package, create accessible multimodal images, video, audio/music, Three.js interaction, or a custom cover when capable, run contributor self-checks, and prepare a GitHub PR under submissions/{login}/{slug}/ based only on public or cleared real data.
 ---
