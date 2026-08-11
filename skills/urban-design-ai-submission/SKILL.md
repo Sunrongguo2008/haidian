@@ -65,6 +65,8 @@ Use $urban-design-ai-submission to create a lightweight sparse workspace and par
 
 The scaffold starts with `package_state=scaffold` and a `SCAFFOLD-DRAFT` marker. It is intentionally invalid for review. Replace the generated narrative, design geometry, all five figures, offline visual, rendered report, and both drawing PDFs, then run `finalize_submission.py`. Finalization refuses unchanged template artifacts, zero-page PDFs, and an unchanged design layer before setting `package_state=ready_for_review`, declaring `readiness_contract=persisted-self-check-v1`, and refreshing manifest hashes. Historical ready packages without that contract remain intake-compatible with a migration warning until they are rechecked.
 
+When iterating an existing `ready_for_review` package, run `python3 scripts/refresh_submission_manifest.py submissions/<github-login>/<proposal-slug>` after editing already declared artifacts. It refreshes only existing hashed entries, refuses scaffold and unsafe paths, and resets `validation_claim.self_checked=false`; then rerun the complete `self_check_submission.py --mark-self-checked --json` command. Do not hand-edit hashes or temporarily revert `package_state`.
+
 ## Required Inputs
 
 Load these before generating or repairing a submission:
