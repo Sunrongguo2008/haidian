@@ -12,9 +12,12 @@ submissions/<github-login>/<proposal-slug>/
 
 - `<github-login>` 必须与 Pull Request 作者一致。
 - `<proposal-slug>` 使用小写字母、数字和连字符。
-- 每个方案目录只能有一个 `proposal.md`。
+- 每个方案目录只能有一个 `proposal.md`；新方案还必须提供独立的等义译稿
+  `proposal.en.md`（中文主稿）或 `proposal.zh.md`（英文主稿），并在 front matter
+  设置 `bilingual_contract_version: "1"`、`translation_file` 和 `translation_of`。
 - 每个方案目录可以有一个 `changelog.md`，用于记录版本变化、采纳反馈和待复核事项。
-- 方案文件可使用中文或英文；英文投稿必须在同一 `proposal.md` 的 `# 中文正式译文` 下附完整中文版本，并设置规定的双语元数据。
+- 方案文件可使用中文或英文，但不能把译文追加到主稿末尾。报告 HTML、`visual/index.html`、A3/A0 PDF
+  和含文字图件也要按 `.zh` / `.en` 提供成对副本；章节、主张、指标、证据引用和图件位置应保持一致。
 - 可选图片或图表放在 `assets/` 或 `visual/assets/` 下，并在 `sources.json` 或版权声明中说明来源。
 
 ## 必交 formal 成果
@@ -22,6 +25,8 @@ submissions/<github-login>/<proposal-slug>/
 ```text
 submissions/<github-login>/<proposal-slug>/
   proposal.md
+  proposal.en.md            # required when proposal.md is Chinese
+  report/proposal.en.html   # paired offline report (or .zh.html)
   changelog.md              # optional iteration log
   manifest.json
   agent.json
@@ -91,10 +96,19 @@ python3 scripts/scaffold_ai_submission.py \
   --agent-id <github-login> \
   --agent-name "<agent name>" \
   --proposal-title "<proposal title>"
-python3 scripts/self_check_submission.py submissions/<github-login>/<proposal-slug> --pr-author <github-login>
+python3 scripts/render_proposal_html.py submissions/<github-login>/<proposal-slug>
+python3 scripts/finalize_submission.py submissions/<github-login>/<proposal-slug>
+python3 scripts/self_check_submission.py submissions/<github-login>/<proposal-slug> \
+  --pr-author <github-login> --mark-self-checked --json
+python3 scripts/participant_preflight.py submissions/<github-login>/<proposal-slug> \
+  --pr-author <github-login> --check-push
 ```
 
-提交前必须修复到 `self_check_submission.py` 返回 PASS。它会运行 required CI 同款确定性校验、可信空间复核、HTML 可视化复核和专业证据链复核。
+先替换脚手架正文、图层、图纸和双语展示成果，再运行 `render_proposal_html.py` 与 `finalize_submission.py`。
+finalize 会把 `package_state` 提升为 `ready_for_review` 并写入 `readiness_contract`；只有带
+`--mark-self-checked --json` 的自检在全部检查通过后，才会持久化四门报告、manifest 哈希和
+`validation_claim.self_checked=true`。最后用 `participant_preflight.py --check-push` 检查 PR 范围、文件大小、远程和推送权限。
+详细字段和语言配对规则见 [`docs/formal-submission-guide.md`](../docs/formal-submission-guide.md)。
 
 维护者审核只在 Pull Request comment 中反馈。合并后展示页只显示方案状态和入口链接，不展示 `maintainer_review.py` 生成的 review packet、评分表或中间审核材料；`submissions-data.js` 由维护者合并后生成，参赛者不要修改。
 
